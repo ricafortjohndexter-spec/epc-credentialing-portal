@@ -1,0 +1,1 @@
+ALTER TABLE `credentials` ADD `provider_relations_contact` text DEFAULT '' NOT NULL;
