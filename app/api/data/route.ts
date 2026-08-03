@@ -316,7 +316,8 @@ export async function PUT(request: Request) {
       await db.insert(activity).values({ action: "Updated", entityType: "credential", entityName: textValue(data.recordName) || `Record ${payload.id}`, detail: `${status}${verificationDate ? ` · Provider Relations confirmed ${verificationDate}` : ""} · ${textValue(data.nextAction)}` });
     } else if (payload.entity === "setting" && payload.key) {
       await db.insert(settings).values({ key: payload.key, value: textValue(payload.value), updatedAt: new Date().toISOString() }).onConflictDoUpdate({ target: settings.key, set: { value: textValue(payload.value), updatedAt: new Date().toISOString() } });
-      await db.insert(activity).values({ action: "Changed", entityType: "access", entityName: "Sharing preference", detail: textValue(payload.value) });
+      const eftEraUpdate = payload.key === "eftEraRecords";
+      await db.insert(activity).values({ action: "Changed", entityType: eftEraUpdate ? "eft-era" : "access", entityName: eftEraUpdate ? "EFT / ERA enrollment" : "Sharing preference", detail: eftEraUpdate ? "Payer enrollment status updated" : textValue(payload.value) });
     } else {
       return Response.json({ error: "Unknown record." }, { status: 400 });
     }
