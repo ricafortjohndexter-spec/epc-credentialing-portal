@@ -35,7 +35,7 @@ a { color: var(--teal); }
 .epc-brand-name { min-width: 0; display: grid; gap: 4px; }
 .epc-brand-name strong { color: white; font-size: 12px; line-height: 1.25; letter-spacing: -.01em; }
 .epc-brand-name small { color: rgba(255,255,255,.68); font-size: 10px; line-height: 1.25; }
-.sidebar nav { padding: 12px 10px; display: grid; gap: 4px; }
+.sidebar nav { min-height: 0; padding: 12px 10px; display: grid; gap: 4px; overflow-y: auto; }
 .sidebar nav button { position: relative; width: 100%; padding: 11px 14px; display: flex; align-items: center; gap: 13px; border: 0; border-radius: 9px; color: rgba(255,255,255,.88); background: transparent; text-align: left; cursor: pointer; transition: 150ms ease-out; }
 .sidebar nav button:hover { background: rgba(255,255,255,.08); color: white; }
 .sidebar nav button.active { color: white; background: linear-gradient(90deg, #087c98, #1490aa); box-shadow: inset 3px 0 white; }
@@ -255,6 +255,23 @@ progress::-webkit-progress-value { background: linear-gradient(90deg, var(--teal
 .schedule-summary strong, .analytics-summary strong { color: var(--navy); font-size: 30px; line-height: 1; }
 .schedule-summary span, .analytics-summary span { color: var(--slate); font-size: 12px; font-weight: 700; }
 .analytics-summary small { color: var(--muted); font-size: 10px; }
+.eft-guidance { margin-bottom: 18px; padding: 15px 17px; display: flex; align-items: flex-start; gap: 12px; color: #67501f; background: #fff8e8; border: 1px solid #ead9ae; border-radius: 12px; }
+.eft-guidance .icon { color: var(--warning); }
+.eft-guidance div { display: grid; gap: 4px; }
+.eft-guidance strong { color: #604818; font-size: 13px; }
+.eft-guidance span { font-size: 11px; line-height: 1.55; }
+.eft-summary { margin-bottom: 18px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.eft-summary article { min-height: 104px; padding: 18px; display: grid; align-content: center; gap: 5px; background: white; border: 1px solid var(--border); border-radius: 11px; box-shadow: var(--shadow); }
+.eft-summary strong { color: var(--navy); font-size: 30px; line-height: 1; }
+.eft-summary span { color: var(--slate); font-size: 12px; font-weight: 700; }
+.eft-summary small { color: var(--muted); font-size: 10px; }
+.eft-table { min-width: 1120px; }
+.eft-table td { vertical-align: middle; }
+.eft-payer { min-width: 220px; display: flex; align-items: center; gap: 10px; }
+.eft-payer > span { min-width: 0; display: grid; gap: 3px; }
+.eft-payer strong { color: var(--navy); }
+.eft-payer small { max-width: 220px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.security-note { padding: 11px 13px; display: flex; align-items: flex-start; gap: 10px; color: #286848; background: #eaf6ef; border: 1px solid #cce7d7; border-radius: 9px; font-size: 11px; font-weight: 600; line-height: 1.5; }
 .schedule-groups { display: grid; gap: 16px; }
 .schedule-group { overflow: hidden; }
 .schedule-group > header { padding: 17px 19px; display: flex; align-items: start; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); }
@@ -478,6 +495,7 @@ progress::-webkit-progress-value { background: linear-gradient(90deg, var(--teal
   .kpi-card strong { font-size: 26px; }
   .provider-grid { grid-template-columns: 1fr; }
   .schedule-summary, .analytics-summary { grid-template-columns: repeat(2, 1fr); }
+  .eft-summary { grid-template-columns: repeat(2, 1fr); }
   .analytics-grid { grid-template-columns: 1fr; }
   .readiness-grid { grid-template-columns: 1fr; }
   .wide-analytics { grid-column: auto; }
@@ -511,6 +529,8 @@ progress::-webkit-progress-value { background: linear-gradient(90deg, var(--teal
   .avatar-button { display: none; }
   .page-heading { display: grid; }
   .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .eft-summary { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .eft-summary article { min-height: 92px; padding: 14px; }
   .kpi-card { gap: 10px; }
   .kpi-card div span { font-size: 12px; }
   .panel-title { padding: 18px; }
