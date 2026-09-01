@@ -222,6 +222,14 @@ progress::-webkit-progress-value { background: linear-gradient(90deg, var(--teal
 .provider-card-foot a { color: var(--teal); font-size: 11px; font-weight: 700; text-decoration: none; }
 
 .payer-groups { display: grid; gap: 24px; }
+.section-tabs { margin-bottom: 18px; padding: 5px; display: flex; gap: 6px; background: #eaf0f2; border: 1px solid #d9e3e6; border-radius: 13px; }
+.section-tabs > button { min-height: 46px; padding: 8px 16px; display: flex; align-items: center; justify-content: center; gap: 9px; color: #58707c; background: transparent; border: 0; border-radius: 9px; font-size: 12px; font-weight: 750; cursor: pointer; }
+.section-tabs > button:hover { color: var(--navy); background: rgba(255,255,255,.58); }
+.section-tabs > button.active { color: var(--navy); background: white; box-shadow: 0 2px 7px rgba(12,43,61,.09); }
+.application-tabs > button { flex: 1; display: grid; gap: 2px; text-align: left; }
+.application-tabs > button span { font-size: 12px; }
+.application-tabs > button small { color: var(--muted); font-size: 9px; font-weight: 600; }
+.payer-management-tabs { width: fit-content; }
 .payer-group > header { margin-bottom: 10px; padding: 0 3px; display: flex; align-items: end; justify-content: space-between; gap: 14px; }
 .payer-group > header h2 { margin: 0; color: var(--navy); font-size: 20px; }
 .payer-group > header p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
@@ -238,6 +246,20 @@ progress::-webkit-progress-value { background: linear-gradient(90deg, var(--teal
 .payer-contract-evidence strong { font-size: 10px; }
 .payer-contract-evidence span { color: #856b43; font-size: 9px; line-height: 1.45; }
 .payer-links { display: grid; justify-items: start; gap: 7px; }
+
+.documents-stack { display: grid; gap: 18px; }
+.documents-panel { min-width: 0; }
+.document-reference { max-width: 620px; display: grid; gap: 4px; color: var(--slate); line-height: 1.45; }
+.document-reference small { color: var(--teal); font-weight: 750; }
+.document-link-grid { padding: 0 18px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.document-link-grid article { min-width: 0; padding: 13px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; background: #f8fafb; border: 1px solid var(--border); border-radius: 11px; }
+.document-link-grid article > span { min-width: 0; display: grid; gap: 3px; }
+.document-link-grid strong, .document-link-grid small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-link-grid strong { color: var(--navy); font-size: 12px; }
+.document-link-grid small { color: var(--muted); font-size: 9px; }
+.document-link-grid article > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.document-link-grid a { color: var(--teal); font-size: 10px; font-weight: 750; text-decoration: none; }
+.document-link-grid a:hover { text-decoration: underline; }
 
 .queue-panel { overflow: hidden; }
 .queue-toolbar { padding: 15px 18px; display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 1px solid var(--border); }
@@ -754,6 +776,7 @@ tbody tr:hover { background: #f5faf9; }
   .portal-shell { grid-template-columns: 224px minmax(0, 1fr); }
   .sidebar { width: 224px; }
   main { padding-inline: 26px; }
+  .document-link-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 780px) {
   .portal-shell { display: block; }
@@ -761,4 +784,10 @@ tbody tr:hover { background: #f5faf9; }
   .portal-main { grid-column: auto; }
   main { padding: 22px 14px 36px; }
   .topbar { padding-inline: 14px; }
+  .section-tabs { width: 100%; overflow-x: auto; }
+  .section-tabs > button { min-width: max-content; }
+  .application-tabs > button { min-width: 185px; }
+  .document-link-grid { padding-inline: 12px; }
+  .document-link-grid article { grid-template-columns: auto minmax(0, 1fr); }
+  .document-link-grid article > div { grid-column: 2; justify-content: flex-start; }
 }

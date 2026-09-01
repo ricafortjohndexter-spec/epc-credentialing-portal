@@ -9,7 +9,8 @@ type Credential = { id: number; providerId: number; payerId: number; status: str
 type Activity = { id: number; action: string; entityType: string; entityName: string; detail: string; createdAt: string };
 type PortalData = { providers: Provider[]; payers: Payer[]; credentials: Credential[]; activity: Activity[]; settings: Record<string, string> };
 type EftEraRecord = { payerId: number; eftStatus: string; eraStatus: string; enrollmentMethod: string; portalUrl: string; clearinghouse: string; submittedDate: string; effectiveDate: string; confirmationNumber: string; assignedTo: string; followUpDate: string; notes: string; updatedAt: string };
-type View = "start" | "dashboard" | "queue" | "schedule" | "analytics" | "providers" | "payers" | "eftEra" | "activity";
+type View = "dashboard" | "providers" | "payers" | "applications" | "documents" | "queue" | "schedule" | "analytics" | "eftEra" | "activity";
+type ApplicationTab = "credentialing" | "followups" | "eftEra";
 type Modal = { type: "provider" | "providerDetail" | "payer" | "credential" | "eftEra" | "share"; record?: Provider | Payer | Credential | EftEraRecord } | null;
 type EnrichedCredential = Credential & { provider?: Provider; payer?: Payer };
 type PlanCategory = "Commercial" | "Marketplace" | "Medicare" | "Medicaid";
@@ -221,7 +222,7 @@ function PayerLogo({ payer, size = "medium" }: { payer: Payer; size?: "medium" |
 }
 
 function Icon({ name }: { name: string }) {
-  const marks: Record<string, string> = { start: "◎", dashboard: "⌂", queue: "☷", schedule: "◷", analytics: "▥", providers: "♙", payers: "▦", eftEra: "$", activity: "↗", search: "⌕", add: "+", share: "☍", edit: "✎", external: "↗", phone: "☎", email: "✉", check: "✓", alert: "!", reminder: "●" };
+  const marks: Record<string, string> = { dashboard: "⌂", applications: "☷", documents: "▤", queue: "☷", schedule: "◷", analytics: "▥", providers: "♙", payers: "▦", eftEra: "$", activity: "↗", search: "⌕", add: "+", share: "☍", edit: "✎", external: "↗", phone: "☎", email: "✉", check: "✓", alert: "!", reminder: "●" };
   return <span className="icon" aria-hidden="true">{marks[name] ?? "•"}</span>;
 }
 
@@ -234,7 +235,8 @@ export default function Portal() {
   const loading = false;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [view, setView] = useState<View>("start");
+  const [view, setView] = useState<View>("dashboard");
+  const [applicationTab, setApplicationTab] = useState<ApplicationTab>("credentialing");
   const [query, setQuery] = useState("");
   const [queueFilter, setQueueFilter] = useState("Evidence Needed");
   const [modal, setModal] = useState<Modal>(null);
@@ -285,7 +287,7 @@ export default function Portal() {
   const search = query.trim().toLowerCase();
 
   const filteredProviders = data.providers.filter((provider) => !search || `${provider.name} ${provider.npi} ${provider.specialty} ${provider.location}`.toLowerCase().includes(search));
-  const filteredPayers = data.payers;
+  const filteredPayers = data.payers.filter((payer) => !search || `${payer.name} ${payer.category} ${payer.networks} ${payer.contractStatus} ${payer.relevance} ${payer.scope} ${payer.phone} ${payer.email}`.toLowerCase().includes(search));
   const enrichedCredentials = data.credentials.map((record) => ({ ...record, provider: providerMap.get(record.providerId), payer: payerMap.get(record.payerId) })).filter((record) => record.provider && record.payer);
   const workableCredentials = enrichedCredentials.filter((record) => !isExcluded(record));
   const filteredCredentials = workableCredentials.filter((record) => {
@@ -300,16 +302,19 @@ export default function Portal() {
   const evidenceRecords = workableCredentials.filter(needsEvidence).sort((a, b) => a.providerId - b.providerId || a.payerId - b.payerId);
   const todaysWork = [...evidenceRecords, ...sortedWork].slice(0, 6);
   const reminders = sortedWork.filter((record) => dateDistance(taskDate(record).date) <= 7);
-  const suggestions = data.providers.filter((provider) => !search || `${provider.name} ${provider.npi}`.toLowerCase().includes(search)).slice(0, 6);
+  const providerSuggestions = data.providers.filter((provider) => search && `${provider.name} ${provider.npi}`.toLowerCase().includes(search)).slice(0, 3);
+  const payerSuggestions = data.payers.filter((payer) => search && `${payer.name} ${payer.networks} ${payer.phone} ${payer.email}`.toLowerCase().includes(search)).slice(0, 3);
+  const recordSuggestions = enrichedCredentials.filter((record) => search && `${record.provider?.name} ${record.provider?.npi} ${record.payer?.name} ${record.referenceNumber} ${record.networkName} ${record.nextAction}`.toLowerCase().includes(search)).slice(0, 4);
   const localPayers = data.payers.filter((payer) => payer.relevance.toLowerCase().includes("houston")).slice(0, 2);
 
   const navItems: { id: View; label: string }[] = [
-    { id: "start", label: "Start Here" }, { id: "dashboard", label: "Dashboard" }, { id: "queue", label: "Work Queue" }, { id: "schedule", label: "To-Do Schedule" }, { id: "analytics", label: "Analytics" }, { id: "providers", label: "Providers" }, { id: "payers", label: "Payers" }, { id: "eftEra", label: "EFT / ERA" }, { id: "activity", label: "Activity" },
+    { id: "dashboard", label: "Dashboard" }, { id: "providers", label: "Providers" }, { id: "payers", label: "Payers" }, { id: "applications", label: "Applications" }, { id: "documents", label: "Documents" },
   ];
 
   const pageCopy: Record<View, { title: string; body: string }> = {
-    start: { title: "Credentialing Launch Center", body: "A safe first-day workflow that turns imported information into confirmed network participation." },
-    dashboard: { title: "Credentialing Dashboard", body: "Live provider-payer progress and the work that needs attention." },
+    dashboard: { title: "What needs attention today?", body: "Priority credentialing work, follow-ups, and blockers in one place." },
+    applications: { title: "Applications", body: "Credentialing, contracting, follow-ups, and EFT / ERA in one tracker." },
+    documents: { title: "Documents & Evidence", body: "A single index of payer evidence, references, portals, and source links." },
     queue: { title: "Work Queue", body: "Filter records, open a row, and save status, date, priority, and next action." },
     schedule: { title: "To-Do Schedule", body: "A dated task list generated from each credentialing application’s progress." },
     analytics: { title: "Credentialing Analytics", body: "Transparent totals calculated from every provider-payer record." },
@@ -322,13 +327,18 @@ export default function Portal() {
   function openAdd() {
     if (view === "providers") setModal({ type: "provider" });
     else if (view === "payers") setModal({ type: "payer" });
-    else setView("queue");
+    else { setApplicationTab("credentialing"); setView("applications"); }
   }
 
   function chooseProvider(provider: Provider) {
     setQuery(provider.npi);
     setView("providers");
     setSearchFocused(false);
+  }
+
+  function openApplications(tab: ApplicationTab = "credentialing") {
+    setApplicationTab(tab);
+    setView("applications");
   }
 
   return (
@@ -348,10 +358,10 @@ export default function Portal() {
       <div className="portal-main">
         <header className="topbar">
           <div className="search-wrap">
-            <label className="searchbox"><Icon name="search" /><input value={query} onFocus={() => setSearchFocused(view !== "eftEra")} onBlur={() => setSearchFocused(false)} onChange={(event) => { setQuery(event.target.value); setSearchFocused(view !== "eftEra"); }} onKeyDown={(event) => { if (event.key === "Escape") setSearchFocused(false); if (view !== "eftEra" && event.key === "Enter" && suggestions[0]) chooseProvider(suggestions[0]); }} placeholder={view === "eftEra" ? "Search payer, status, owner, or reference…" : "Search doctor name or 10-digit NPI…"} aria-label={view === "eftEra" ? "Search EFT and ERA enrollment records" : "Search provider name or NPI"} autoComplete="off" />{query ? <button type="button" className="search-clear" aria-label="Clear search" onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(""); setSearchFocused(view !== "eftEra"); }}>×</button> : null}</label>
-            {searchFocused && view !== "eftEra" ? <div className="search-suggestions" role="listbox"><p>{query ? "Matching providers" : "Try a provider name or NPI"}</p>{suggestions.map((provider) => <button type="button" role="option" aria-selected="false" key={provider.id} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseProvider(provider)}><ProviderAvatar provider={provider} size="small" /><span><strong>{provider.name}</strong><small>{provider.credentials} · NPI {provider.npi}</small></span><b>→</b></button>)}{!suggestions.length ? <div className="no-suggestion">No provider matches “{query}”.</div> : null}<small className="prediction-tip">Prediction: select a name or press Enter for the first match.</small></div> : null}
+            <label className="searchbox"><Icon name="search" /><input value={query} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)} onChange={(event) => { setQuery(event.target.value); setSearchFocused(true); }} onKeyDown={(event) => { if (event.key === "Escape") setSearchFocused(false); if (event.key === "Enter" && providerSuggestions[0]) chooseProvider(providerSuggestions[0]); }} placeholder="Search provider, payer, NPI, reference #…" aria-label="Search provider, payer, NPI, or reference number" autoComplete="off" />{query ? <button type="button" className="search-clear" aria-label="Clear search" onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(""); setSearchFocused(false); }}>×</button> : null}</label>
+            {searchFocused && query ? <div className="search-suggestions" role="listbox"><p>Search results</p>{providerSuggestions.map((provider) => <button type="button" role="option" aria-selected="false" key={`provider-${provider.id}`} onMouseDown={(event) => event.preventDefault()} onClick={() => chooseProvider(provider)}><ProviderAvatar provider={provider} size="small" /><span><strong>{provider.name}</strong><small>Provider · NPI {provider.npi}</small></span><b>→</b></button>)}{payerSuggestions.map((payer) => <button type="button" role="option" aria-selected="false" key={`payer-${payer.id}`} onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(payer.name); setView("payers"); setSearchFocused(false); }}><PayerLogo payer={payer} /><span><strong>{payer.name}</strong><small>Payer · {payer.networks || payer.scope}</small></span><b>→</b></button>)}{recordSuggestions.map((record) => <button type="button" role="option" aria-selected="false" key={`record-${record.id}`} onMouseDown={(event) => event.preventDefault()} onClick={() => { setModal({ type: "credential", record }); setSearchFocused(false); }}><Icon name="applications" /><span><strong>{record.provider?.name} · {record.payer?.name}</strong><small>Application{record.referenceNumber ? ` · Ref ${record.referenceNumber}` : ""}</small></span><b>→</b></button>)}{!providerSuggestions.length && !payerSuggestions.length && !recordSuggestions.length ? <div className="no-suggestion">No matching provider, payer, application, or reference.</div> : null}</div> : null}
           </div>
-          <div className="reminder-wrap"><button className="reminder-button" aria-label={`${reminders.length} reminders`} onClick={() => setRemindersOpen((open) => !open)}><span aria-hidden="true">♢</span>{reminders.length ? <b>{reminders.length > 99 ? "99+" : reminders.length}</b> : null}</button>{remindersOpen ? <ReminderPopover records={reminders.slice(0, 6)} onOpen={(record) => { setModal({ type: "credential", record }); setRemindersOpen(false); }} onSchedule={() => { setView("schedule"); setRemindersOpen(false); }} /> : null}</div>
+          <div className="reminder-wrap"><button className="reminder-button" aria-label={`${reminders.length} reminders`} onClick={() => setRemindersOpen((open) => !open)}><span aria-hidden="true">♢</span>{reminders.length ? <b>{reminders.length > 99 ? "99+" : reminders.length}</b> : null}</button>{remindersOpen ? <ReminderPopover records={reminders.slice(0, 6)} onOpen={(record) => { setModal({ type: "credential", record }); setRemindersOpen(false); }} onSchedule={() => { openApplications("followups"); setRemindersOpen(false); }} /> : null}</div>
           <button className="button secondary share-button" onClick={() => setModal({ type: "share" })}><Icon name="share" />Share</button>
           <button className="avatar-button" aria-label="Open user menu">JR</button>
         </header>
@@ -362,13 +372,14 @@ export default function Portal() {
             <>
               <section className="page-heading">
                 <div><p className="eyebrow">Houston, Texas</p><h1>{pageCopy[view].title}</h1><p>{pageCopy[view].body}</p></div>
-                {(["start", "dashboard", "providers", "payers"] as View[]).includes(view) ? <button className="button primary" onClick={openAdd}><Icon name="add" />{view === "providers" ? "Add provider" : view === "payers" ? "Add payer" : "Manage work"}</button> : null}
+                {(["dashboard", "providers", "payers"] as View[]).includes(view) ? <button className="button primary" onClick={openAdd}><Icon name="add" />{view === "providers" ? "Add provider" : view === "payers" ? "Add payer" : "Manage work"}</button> : null}
               </section>
 
-              {view === "start" && <StartView providers={data.providers} payers={data.payers} activeRecords={workableCredentials} excludedCount={data.credentials.length - workableCredentials.length} evidenceNeeded={evidenceNeeded} openRecords={openRecords} onOpenCredential={(record) => setModal({ type: "credential", record })} onNavigate={(nextView, filter) => { if (filter) setQueueFilter(filter); setView(nextView); }} />}
-              {view === "dashboard" && <Dashboard providers={data.providers} payers={data.payers} confirmed={confirmed} approvalsOnFile={approvalsOnFile} evidenceNeeded={evidenceNeeded} notStarted={notStarted} openCount={openRecords.length} completion={completion} work={todaysWork} localPayers={localPayers} onOpenCredential={(record) => setModal({ type: "credential", record })} onNavigate={setView} />}
+              {view === "dashboard" && <Dashboard providers={data.providers} payers={data.payers} confirmed={confirmed} approvalsOnFile={approvalsOnFile} evidenceNeeded={evidenceNeeded} notStarted={notStarted} openCount={openRecords.length} completion={completion} work={todaysWork} localPayers={localPayers} onOpenCredential={(record) => setModal({ type: "credential", record })} onNavigate={(next) => next === "queue" ? openApplications("credentialing") : next === "schedule" ? openApplications("followups") : setView(next)} />}
               {view === "providers" && <ProvidersView providers={filteredProviders} credentials={data.credentials} onAdd={() => setModal({ type: "provider" })} onView={(provider) => setModal({ type: "providerDetail", record: provider })} onEdit={(provider) => setModal({ type: "provider", record: provider })} onDelete={(provider) => { if (confirm(`Delete ${provider.name}? Their credentialing rows will also be deleted.`)) void save("DELETE", undefined, `?entity=provider&id=${provider.id}`); }} />}
               {view === "payers" && <PayersView payers={filteredPayers} onAdd={() => setModal({ type: "payer" })} onEdit={(payer) => setModal({ type: "payer", record: payer })} onDelete={(payer) => { if (confirm(`Delete ${payer.name}? Their credentialing rows will also be deleted.`)) void save("DELETE", undefined, `?entity=payer&id=${payer.id}`); }} />}
+              {view === "applications" && <ApplicationsView tab={applicationTab} setTab={setApplicationTab} credentialing={<QueueView records={filteredCredentials} filter={queueFilter} setFilter={setQueueFilter} onEdit={(record) => setModal({ type: "credential", record })} />} followups={<ScheduleView records={actionableOpen} onEdit={(record) => setModal({ type: "credential", record })} />} eftEra={<EftEraView records={eftEraRecords} payers={payerMap} query={search} onEdit={(record) => setModal({ type: "eftEra", record })} />} />}
+              {view === "documents" && <DocumentsView records={enrichedCredentials} payers={data.payers} query={search} onOpenCredential={(record) => setModal({ type: "credential", record })} />}
               {view === "eftEra" && <EftEraView records={eftEraRecords} payers={payerMap} query={search} onEdit={(record) => setModal({ type: "eftEra", record })} />}
               {view === "queue" && <QueueView records={filteredCredentials} filter={queueFilter} setFilter={setQueueFilter} onEdit={(record) => setModal({ type: "credential", record })} />}
               {view === "schedule" && <ScheduleView records={actionableOpen} onEdit={(record) => setModal({ type: "credential", record })} />}
@@ -427,8 +438,26 @@ function ProvidersView({ providers, credentials, onAdd, onView, onEdit, onDelete
 }
 
 function PayersView({ payers, onAdd, onEdit, onDelete }: { payers: Payer[]; onAdd: () => void; onEdit: (payer: Payer) => void; onDelete: (payer: Payer) => void }) {
+  const [management, setManagement] = useState<"mhmd" | "independent">("mhmd");
   if (!payers.length) return <EmptyState title="No payers found" body="Try a different search or add an insurance payer." action="Add payer" onAction={onAdd} />;
-  return <section className="payer-groups">{planCategoryOrder.map((category) => { const rows = payers.filter((payer) => payerCategory(payer) === category); if (!rows.length) return null; return <section className={`payer-group ${category.toLowerCase()}`} key={category}><header><div><h2>{category}</h2><p>{categoryDescriptions[category]}</p></div><Badge tone={category === "Medicaid" ? "muted" : "info"}>{rows.length} {rows.length === 1 ? "plan" : "plans"}</Badge></header><div className="payer-list">{rows.map((payer) => <article className="payer-row" key={payer.id}><PayerLogo payer={payer} size="large" /><div className="payer-main"><div className="payer-name-line"><h2>{payer.name}</h2><Badge tone={payer.trackingMode === "Active" ? "success" : "muted"}>{payer.trackingMode}</Badge><Badge tone="info">{payer.relevance}</Badge>{payer.contractStatus === "Delegated contract on file" ? <Badge tone="warning">MHMD contract on file</Badge> : null}</div><p>{payer.scope}</p>{payer.networks ? <small className="payer-networks"><strong>Networks:</strong> {payer.networks}</small> : null}{payer.contractEvidence ? <div className="payer-contract-evidence"><strong>{payer.contractEvidence}</strong><span>{payer.verificationRule}</span></div> : null}<span>{payer.notes}</span></div><div className="payer-links">{payer.portalUrl ? <a className="button compact primary" href={payer.portalUrl} target="_blank" rel="noreferrer">Open portal ↗</a> : null}{payer.phone ? <a href={`tel:${payer.phone.replace(/[^+\d]/g, "")}`}><Icon name="phone" />{payer.phone}</a> : null}{payer.email ? <a href={`mailto:${payer.email}`}><Icon name="email" />{payer.email}</a> : null}</div><div className="row-actions"><button onClick={() => onEdit(payer)} aria-label={`Edit ${payer.name}`}><Icon name="edit" /></button><button className="danger-action" onClick={() => onDelete(payer)} aria-label={`Delete ${payer.name}`}>×</button></div></article>)}</div></section>; })}</section>;
+  const managed = management === "mhmd";
+  const visible = payers.filter((payer) => (payer.contractStatus === "Delegated contract on file") === managed);
+  return <><div className="section-tabs payer-management-tabs"><button className={managed ? "active" : ""} onClick={() => setManagement("mhmd")}>Managed by MHMD <Badge tone="warning">{payers.filter((payer) => payer.contractStatus === "Delegated contract on file").length}</Badge></button><button className={!managed ? "active" : ""} onClick={() => setManagement("independent")}>Managed Independently <Badge tone="info">{payers.filter((payer) => payer.contractStatus !== "Delegated contract on file").length}</Badge></button></div><section className="payer-groups">{planCategoryOrder.map((category) => { const rows = visible.filter((payer) => payerCategory(payer) === category); if (!rows.length) return null; return <section className={`payer-group ${category.toLowerCase()}`} key={category}><header><div><h2>{category}</h2><p>{categoryDescriptions[category]}</p></div><Badge tone={category === "Medicaid" ? "muted" : "info"}>{rows.length} {rows.length === 1 ? "plan" : "plans"}</Badge></header><div className="payer-list">{rows.map((payer) => <article className="payer-row" key={payer.id}><PayerLogo payer={payer} size="large" /><div className="payer-main"><div className="payer-name-line"><h2>{payer.name}</h2><Badge tone={payer.trackingMode === "Active" ? "success" : "muted"}>{payer.trackingMode}</Badge>{managed ? <Badge tone="warning">MHMD contract on file</Badge> : <Badge tone="info">Independent</Badge>}</div><p>{payer.scope}</p>{payer.networks ? <small className="payer-networks"><strong>Networks:</strong> {payer.networks}</small> : null}{payer.contractEvidence ? <div className="payer-contract-evidence"><strong>{payer.contractEvidence}</strong><span>{payer.verificationRule}</span></div> : null}<span>{payer.notes}</span></div><div className="payer-links">{payer.portalUrl ? <a className="button compact primary" href={payer.portalUrl} target="_blank" rel="noreferrer">Open portal ↗</a> : null}{!managed && payer.joinUrl ? <a className="button compact secondary" href={payer.joinUrl} target="_blank" rel="noreferrer">New enrollment ↗</a> : null}{payer.phone ? <a href={`tel:${payer.phone.replace(/[^+\d]/g, "")}`}><Icon name="phone" />{payer.phone}</a> : null}{payer.email ? <a href={`mailto:${payer.email}`}><Icon name="email" />{payer.email}</a> : null}</div><div className="row-actions"><button onClick={() => onEdit(payer)} aria-label={`Edit ${payer.name}`}><Icon name="edit" /></button><button className="danger-action" onClick={() => onDelete(payer)} aria-label={`Delete ${payer.name}`}>×</button></div></article>)}</div></section>; })}{!visible.length ? <EmptyState title={`No ${managed ? "MHMD-managed" : "independently managed"} payers found`} body="Clear the search or add a payer." action="Add payer" onAction={onAdd} /> : null}</section></>;
+}
+
+function ApplicationsView({ tab, setTab, credentialing, followups, eftEra }: { tab: ApplicationTab; setTab: (tab: ApplicationTab) => void; credentialing: React.ReactNode; followups: React.ReactNode; eftEra: React.ReactNode }) {
+  const tabs: { id: ApplicationTab; label: string; detail: string }[] = [
+    { id: "credentialing", label: "Credentialing & Contracting", detail: "Universal application tracker" },
+    { id: "followups", label: "Follow-ups", detail: "Due dates and next actions" },
+    { id: "eftEra", label: "EFT / ERA", detail: "Payments and remittances" },
+  ];
+  return <><div className="section-tabs application-tabs">{tabs.map((item) => <button key={item.id} className={tab === item.id ? "active" : ""} onClick={() => setTab(item.id)}><span>{item.label}</span><small>{item.detail}</small></button>)}</div>{tab === "credentialing" ? credentialing : tab === "followups" ? followups : eftEra}</>;
+}
+
+function DocumentsView({ records, payers, query, onOpenCredential }: { records: EnrichedCredential[]; payers: Payer[]; query: string; onOpenCredential: (record: Credential) => void }) {
+  const evidenceRows = records.filter((record) => record.evidenceReference || record.referenceNumber).filter((record) => !query || `${record.provider?.name} ${record.payer?.name} ${record.evidenceReference} ${record.referenceNumber}`.toLowerCase().includes(query));
+  const payerRows = payers.filter((payer) => payer.sourceUrl || payer.portalUrl || payer.contractEvidence).filter((payer) => !query || `${payer.name} ${payer.contractEvidence} ${payer.notes} ${payer.scope}`.toLowerCase().includes(query));
+  return <div className="documents-stack"><section className="panel documents-panel"><div className="panel-title"><div><h2>Credentialing evidence</h2><p>References attached to provider–payer records. Open a row to update its evidence or case number.</p></div><Badge tone="info">{evidenceRows.length} records</Badge></div><div className="table-scroll"><table><thead><tr><th>Provider</th><th>Payer</th><th>Evidence / reference</th><th>Effective date</th><th /></tr></thead><tbody>{evidenceRows.slice(0, 250).map((record) => <tr key={record.id}><td><strong>{record.provider?.name}</strong></td><td>{record.payer?.name}</td><td><span className="document-reference">{record.evidenceReference || "Case/reference"}{record.referenceNumber ? <small>Ref: {record.referenceNumber}</small> : null}</span></td><td>{record.effectiveDate ? new Date(`${record.effectiveDate}T00:00:00`).toLocaleDateString() : "—"}</td><td><button className="table-action" onClick={() => onOpenCredential(record)}>Open</button></td></tr>)}</tbody></table></div>{!evidenceRows.length ? <EmptyState title="No evidence matches this search" body="Clear the search or add evidence to an application record." /> : null}</section><section className="panel documents-panel"><div className="panel-title"><div><h2>Payer source library</h2><p>Official portals, contracting pages, and source links—kept with each payer profile.</p></div><Badge tone="info">{payerRows.length} payers</Badge></div><div className="document-link-grid">{payerRows.map((payer) => <article key={payer.id}><PayerLogo payer={payer} /><span><strong>{payer.name}</strong><small>{payer.contractEvidence || payer.scope || "Payer reference"}</small></span><div>{payer.portalUrl ? <a href={payer.portalUrl} target="_blank" rel="noreferrer">Portal ↗</a> : null}{payer.sourceUrl ? <a href={payer.sourceUrl} target="_blank" rel="noreferrer">Source ↗</a> : null}{payer.joinUrl ? <a href={payer.joinUrl} target="_blank" rel="noreferrer">Enrollment ↗</a> : null}</div></article>)}</div></section></div>;
 }
 
 function EftEraView({ records, payers, query, onEdit }: { records: EftEraRecord[]; payers: Map<number, Payer>; query: string; onEdit: (record: EftEraRecord) => void }) {
