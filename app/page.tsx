@@ -1,4 +1,4 @@
-import Portal from "./portal";
+import CommandCenter from "./command-center";
 import { applySafeLatestPortalSync } from "./sync-20260824-safe";
 import { applyEmailMonthSync } from "./sync-email-month-20260824";
 import { applySubmissionSync20260824 } from "./sync-submissions-20260824";
@@ -15,5 +15,5 @@ export default async function Home() {
   } catch (error) {
     console.error("EPC operational sync failed", error);
   }
-  return <Portal />;
+  return <CommandCenter />;
 }
